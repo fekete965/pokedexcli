@@ -2,47 +2,85 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
 )
 
+const LOCATION_API_URL string = "https://pokeapi.co/api/v2/location-area/"
+
+type PokemonLocationAreaItem struct {
+	Name string `json:"name"`
+	Url string `json:"url"`
+}
+
+type PokemonLocationAreaResponse struct {
+	Count int `json:"count"`
+	Next *string `json:"next"`
+	Previous *string `json:"previous"`
+	Results []PokemonLocationAreaItem `json:"results"`
+}
+
 type cliCommand struct {
 	name string
 	description string
-	callback func() error
+	callback func(cfg *config) error
 }
 
+type config struct {
+	Next *string
+	Previous *string
+}
+
+func constToPtr(s string) *string { return &s }
+
+var mapConfig config = config{
+	Next: constToPtr(LOCATION_API_URL),
+	Previous: nil,
+}
 var cliCommandRegistry map[string]cliCommand = createCommandRegistry()
 
 func createCommandRegistry() map[string]cliCommand {
-	cliCommandRegistry := map[string]cliCommand {
+	registry := map[string]cliCommand {
 		"exit": {
 			name: "exit",
 			description: "Exit the Pokedex",
 			callback: commandExit,
 		},
+		"map": {
+			name: "map",
+			description: "It displays the names of the next 20 location areas in the Pokemon world",
+			callback: commandMap,
+		},
+		"mapb": {
+			name: "mapb",
+			description: "It displays the names of previous 20 location areas in the Pokemon world",
+			callback: commandMapB,
+		},
 	}
 
-	cliCommandRegistry["help"] = cliCommand {
+	registry["help"] = cliCommand {
 		name: "help",
 		description: "Displays a help message",
-		callback: createCommandHelp(cliCommandRegistry),
+		callback: createCommandHelp(registry),
 	}
 
-	return cliCommandRegistry
+	return registry
 }
 
-func commandExit() error {
+func commandExit(cfg *config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 
 	return nil
 }
 
-func createCommandHelp(cliCommandRegistry map[string]cliCommand) func() error {
-	return func() error {
+func createCommandHelp(cliCommandRegistry map[string]cliCommand) func(cfg *config) error {
+	return func(cfg *config) error {
 		fmt.Println("")
 
 		fmt.Println("\nWelcome to the Pokedex!")
@@ -66,6 +104,82 @@ func createCommandHelp(cliCommandRegistry map[string]cliCommand) func() error {
 	}
 }
 
+func commandMap(cfg *config) error {
+	apiURL := cfg.Next
+
+	if apiURL == nil {
+		fmt.Println("you're on the last page")
+		return nil
+	}
+
+	result, err := getPokemonLocation(*apiURL)
+	if err != nil {
+		return err
+	}
+
+	mapConfig.Next = result.Next
+	mapConfig.Previous = result.Previous
+ 
+	printPokemonLocations(result)
+
+	return nil
+}
+
+func commandMapB(cfg *config) error {
+	apiURL := cfg.Previous
+
+	if apiURL == nil {
+		fmt.Println("you're on the first page")
+		return nil
+	}
+
+	result, err := getPokemonLocation(*apiURL)
+	if err != nil {
+		return err
+	}
+
+	mapConfig.Next = result.Next
+	mapConfig.Previous = result.Previous
+ 
+	printPokemonLocations(result)
+
+	return nil
+}
+
+
+func printPokemonLocations(data PokemonLocationAreaResponse) {
+	for _, location := range data.Results {
+		fmt.Println(location.Name)
+	}
+}
+
+func getPokemonLocation(apiURL string) (PokemonLocationAreaResponse, error) {
+	result := PokemonLocationAreaResponse{}
+
+	res, err := http.Get(apiURL)
+	if err != nil {
+		return result, err
+	}
+
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return result, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode > 299 {
+		err := fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, data)
+		return result, err
+	}
+
+	
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -86,7 +200,7 @@ func main() {
 		if !isCommandExists {
 			fmt.Println("Unknown command")
 		} else {
-			err := command.callback()
+			err := command.callback(&mapConfig)
 			if err != nil {
 				fmt.Println(err)
 			}
