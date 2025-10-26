@@ -9,6 +9,9 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
+
+	"github.com/fekete965/pokedexcli/internal"
 )
 
 const LOCATION_API_URL string = "https://pokeapi.co/api/v2/location-area/"
@@ -43,6 +46,7 @@ var mapConfig config = config{
 	Previous: nil,
 }
 var cliCommandRegistry map[string]cliCommand = createCommandRegistry()
+var pokemonLocationAreaCache = internal.NewCache(time.Second * 7)
 
 func createCommandRegistry() map[string]cliCommand {
 	registry := map[string]cliCommand {
@@ -156,6 +160,16 @@ func printPokemonLocations(data PokemonLocationAreaResponse) {
 func getPokemonLocation(apiURL string) (PokemonLocationAreaResponse, error) {
 	result := PokemonLocationAreaResponse{}
 
+	if cacheData, hasCache := pokemonLocationAreaCache.Get(apiURL); hasCache {
+		err := json.Unmarshal(cacheData, &result)
+		if err != nil {
+			return result, err
+		}
+		
+		return result, nil
+	}
+
+
 	res, err := http.Get(apiURL)
 	if err != nil {
 		return result, err
@@ -177,6 +191,8 @@ func getPokemonLocation(apiURL string) (PokemonLocationAreaResponse, error) {
 	if err != nil {
 		return result, err
 	}
+
+	pokemonLocationAreaCache.Add(apiURL, data)
 
 	return result, nil
 }
