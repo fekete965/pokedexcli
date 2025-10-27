@@ -27,6 +27,16 @@ type PokemonLocationAreaResponse struct {
 	Previous *string `json:"previous"`
 	Results []NamedResource `json:"results"`
 }
+
+type PokemonEncounter struct {
+	Pokemon NamedResource `json:"pokemon"`
+}
+
+type PokemonLocationAreaDetailsResponse struct {
+	GameIndex int `json:"game_index"`
+	Location NamedResource `json:"location"`
+	Name string `json:"name"`
+	PokemonEncounters []PokemonEncounter `json:"pokemon_encounters"`
 }
 
 type cliCommand struct {
