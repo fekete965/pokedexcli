@@ -63,24 +63,24 @@ func createCommandRegistry() map[string]cliCommand {
 	registry := map[string]cliCommand {
 		"exit": {
 			name: "exit",
-			description: "Exit the Pokedex",
+			description: "Exit the Pokedex. Usage: exit",
 			callback: commandExit,
 		},
 		"map": {
 			name: "map",
-			description: "It displays the names of the next 20 location areas in the Pokemon world",
+			description: "It displays the names of the next 20 location areas in the Pokemon world. Usage: map",
 			callback: commandMap,
 		},
 		"mapb": {
 			name: "mapb",
-			description: "It displays the names of previous 20 location areas in the Pokemon world",
+			description: "It displays the names of previous 20 location areas in the Pokemon world. Usage: mapb",
 			callback: commandMapB,
 		},
 	}
 
 	registry["help"] = cliCommand {
 		name: "help",
-		description: "Displays a help message",
+		description: "Displays a help message. Usage: help",
 		callback: createCommandHelp(registry),
 	}
 
