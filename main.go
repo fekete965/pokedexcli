@@ -58,6 +58,7 @@ var mapConfig config = config{
 }
 var cliCommandRegistry map[string]cliCommand = createCommandRegistry()
 var pokemonLocationAreaCache = internal.NewCache(time.Second * 7)
+var pokemonLocationAreaDetailCache = internal.NewCache(time.Second * 7)
 
 func createCommandRegistry() map[string]cliCommand {
 	registry := map[string]cliCommand {
@@ -168,7 +169,20 @@ func printPokemonLocations(data PokemonLocationAreaResponse) {
 	}
 }
 
-func getPokemonLocation(apiURL string) (PokemonLocationAreaResponse, error) {
+func printPokemonLocationAreaDetails(data PokemonLocationAreaDetailsResponse, locationAreaName string) {
+	if len(data.PokemonEncounters) == 0 {
+		fmt.Println("No Pokemon found in " + locationAreaName)
+		
+		return 
+	}
+	
+	fmt.Println("Found Pokemon:")
+	for _, encounter := range data.PokemonEncounters {
+		fmt.Println(" - " +encounter.Pokemon.Name)
+	}
+}
+
+func getPokemonLocations(apiURL string) (PokemonLocationAreaResponse, error) {
 	result := PokemonLocationAreaResponse{}
 
 	if cacheData, hasCache := pokemonLocationAreaCache.Get(apiURL); hasCache {
@@ -204,6 +218,46 @@ func getPokemonLocation(apiURL string) (PokemonLocationAreaResponse, error) {
 	}
 
 	pokemonLocationAreaCache.Add(apiURL, data)
+
+	return result, nil
+}
+
+func getPokemonLocationAreaDetails(locationAreaName string) (PokemonLocationAreaDetailsResponse, error) {
+	apiURL := LOCATION_API_URL + "/" + locationAreaName
+
+	result := PokemonLocationAreaDetailsResponse{}
+
+	if cacheData, hasCache := pokemonLocationAreaDetailCache.Get(apiURL); hasCache {
+		err := json.Unmarshal(cacheData, &result)
+		if err != nil {
+			return result, err
+		}
+
+		return result, nil
+	}
+
+	res, err := http.Get(apiURL)
+	if err != nil {
+		return result, err
+	}
+
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return result, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode > 299 {
+		err := fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, data)
+		return result, err
+	}
+
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return result, err
+	}
+
+	pokemonLocationAreaDetailCache.Add(apiURL, data)
 
 	return result, nil
 }
