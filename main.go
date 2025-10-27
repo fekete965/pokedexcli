@@ -67,6 +67,11 @@ func createCommandRegistry() map[string]cliCommand {
 			description: "Exit the Pokedex. Usage: exit",
 			callback: commandExit,
 		},
+		"explore": {
+			name: "explore",
+			description: "Lists all the Pokémon located in a specific location area. Usage: explore <location name>",
+			callback: commandExplore,
+		},
 		"map": {
 			name: "map",
 			description: "It displays the names of the next 20 location areas in the Pokemon world. Usage: map",
@@ -162,6 +167,25 @@ func commandMapB(cfg *config, args []string) error {
 	return nil
 }
 
+func commandExplore(cfg *config, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("missing location name. Usage: explore <location name>")
+	}
+
+	locationAreaName := args[0]
+	
+	prompt := fmt.Sprintf("Exploring '%v'...", locationAreaName)
+	fmt.Println(prompt)
+
+	data, err := getPokemonLocationAreaDetails(locationAreaName)
+	if err != nil {
+		return err
+	}
+
+	printPokemonLocationAreaDetails(data, locationAreaName)
+
+	return nil
+}
 
 func printPokemonLocations(data PokemonLocationAreaResponse) {
 	for _, location := range data.Results {
