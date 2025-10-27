@@ -42,7 +42,7 @@ type PokemonLocationAreaDetailsResponse struct {
 type cliCommand struct {
 	name string
 	description string
-	callback func(cfg *config) error
+	callback func(cfg *config, args []string) error
 }
 
 type config struct {
@@ -88,15 +88,15 @@ func createCommandRegistry() map[string]cliCommand {
 	return registry
 }
 
-func commandExit(cfg *config) error {
+func commandExit(cfg *config, args []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 
 	return nil
 }
 
-func createCommandHelp(cliCommandRegistry map[string]cliCommand) func(cfg *config) error {
-	return func(cfg *config) error {
+func createCommandHelp(cliCommandRegistry map[string]cliCommand) func(cfg *config, args []string) error {
+	return func(cfg *config, args []string) error {
 		fmt.Println("")
 
 		fmt.Println("\nWelcome to the Pokedex!")
@@ -120,7 +120,7 @@ func createCommandHelp(cliCommandRegistry map[string]cliCommand) func(cfg *confi
 	}
 }
 
-func commandMap(cfg *config) error {
+func commandMap(cfg *config, args []string) error {
 	apiURL := cfg.Next
 
 	if apiURL == nil {
@@ -128,7 +128,7 @@ func commandMap(cfg *config) error {
 		return nil
 	}
 
-	result, err := getPokemonLocation(*apiURL)
+	result, err := getPokemonLocations(*apiURL)
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func commandMap(cfg *config) error {
 	return nil
 }
 
-func commandMapB(cfg *config) error {
+func commandMapB(cfg *config, args []string) error {
 	apiURL := cfg.Previous
 
 	if apiURL == nil {
@@ -149,7 +149,7 @@ func commandMapB(cfg *config) error {
 		return nil
 	}
 
-	result, err := getPokemonLocation(*apiURL)
+	result, err := getPokemonLocations(*apiURL)
 	if err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func main() {
 		if !isCommandExists {
 			fmt.Println("Unknown command")
 		} else {
-			err := command.callback(&mapConfig)
+			err := command.callback(&mapConfig, input[1:])
 			if err != nil {
 				fmt.Println(err)
 			}
