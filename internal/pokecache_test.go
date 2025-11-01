@@ -12,7 +12,7 @@ func TestAddGet(t *testing.T) {
 	cases := []struct {
 		key string
 		val []byte
-	} {
+	}{
 		{
 			key: "https://test-key.com",
 			val: []byte("test-data"),
@@ -45,14 +45,14 @@ func TestAddGet(t *testing.T) {
 
 func TestReapLoop(t *testing.T) {
 	const baseTime = time.Millisecond * 5
-	const waitTime = baseTime + time.Millisecond * 5
+	const waitTime = baseTime + time.Millisecond*5
 
 	testCacheKey := "https://test-key.com"
 
 	cache := NewCache(baseTime)
 	cache.Add(testCacheKey, []byte("testdata"))
 
-	_, ok:= cache.Get(testCacheKey)
+	_, ok := cache.Get(testCacheKey)
 	if !ok {
 		t.Errorf("expected to find key: %v", testCacheKey)
 		return
@@ -63,6 +63,6 @@ func TestReapLoop(t *testing.T) {
 	_, ok = cache.Get(testCacheKey)
 	if ok {
 		t.Errorf("expected to not find key: %v", testCacheKey)
-		return 
+		return
 	}
 }
