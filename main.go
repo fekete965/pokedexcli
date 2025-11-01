@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"sort"
@@ -14,7 +15,8 @@ import (
 	"github.com/fekete965/pokedexcli/internal"
 )
 
-const LOCATION_API_URL string = "https://pokeapi.co/api/v2/location-area/"
+const LOCATION_API_URL string = "https://pokeapi.co/api/v2/location-area"
+const POKEMON_API_URL string = "https://pokeapi.co/api/v2/pokemon"
 
 type NamedResource struct {
 	Name string `json:"name"`
@@ -39,6 +41,16 @@ type PokemonLocationAreaDetailsResponse struct {
 	PokemonEncounters []PokemonEncounter `json:"pokemon_encounters"`
 }
 
+type PokemonInfoResponse struct {
+	Id int `json:"id"`
+	Name string `json:"name"`
+	BaseExperience int `json:"base_experience"`
+	Height int `json:"height"`
+	IsDefault bool `json:"is_default"`
+	Order int `json:"order"`
+	Weight int `json:"weight"`
+}
+
 type cliCommand struct {
 	name string
 	description string
@@ -59,9 +71,15 @@ var mapConfig config = config{
 var cliCommandRegistry map[string]cliCommand = createCommandRegistry()
 var pokemonLocationAreaCache = internal.NewCache(time.Second * 7)
 var pokemonLocationAreaDetailCache = internal.NewCache(time.Second * 7)
+var pokedexCache map[string]PokemonInfoResponse = make(map[string]PokemonInfoResponse)
 
 func createCommandRegistry() map[string]cliCommand {
 	registry := map[string]cliCommand {
+		"catch": {
+			name: "catch",
+			description: "Catch a Pokemon. Usage: catch <pokemon name>",
+			callback: commandCatch,
+		},
 		"exit": {
 			name: "exit",
 			description: "Exit the Pokedex. Usage: exit",
@@ -187,6 +205,36 @@ func commandExplore(cfg *config, args []string) error {
 	return nil
 }
 
+func commandCatch(cfg *config, args []string) error {
+	if len(args) == 0 || len(strings.TrimSpace(args[0])) == 0 {
+		return fmt.Errorf("missing pokemon name. Usage: catch <pokemon name>")
+	}
+
+	pokemonName := args[0]
+	
+	pokemonInfo, err := getPokemonInfo(pokemonName)
+	if err != nil {
+		return err
+	}
+
+	msg := fmt.Sprintf("Throwing a Pokeball at %v...", pokemonInfo.Name)
+	fmt.Println(msg)
+
+	isSuccessfulCapture := rand.Intn(pokemonInfo.BaseExperience) > pokemonInfo.BaseExperience / 2
+
+	if isSuccessfulCapture {
+		pokedexCache[pokemonInfo.Name] = pokemonInfo
+		
+		msg := fmt.Sprintf("%v was caught!", pokemonInfo.Name)
+		fmt.Println(msg)
+	} else {
+		msg := fmt.Sprintf("%v escaped!", pokemonInfo.Name)
+		fmt.Println(msg)
+	}
+
+	return nil
+}
+
 func printPokemonLocations(data PokemonLocationAreaResponse) {
 	for _, location := range data.Results {
 		fmt.Println(location.Name)
@@ -282,6 +330,35 @@ func getPokemonLocationAreaDetails(locationAreaName string) (PokemonLocationArea
 	}
 
 	pokemonLocationAreaDetailCache.Add(apiURL, data)
+
+	return result, nil
+}
+
+func getPokemonInfo(pokemonName string) (PokemonInfoResponse, error) {
+	apiURL := POKEMON_API_URL + "/" + pokemonName
+
+	result := PokemonInfoResponse{}
+
+	res, err := http.Get(apiURL)
+	if err != nil {
+		return result, err
+	}
+
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return result, err
+	}
+	defer res.Body.Close()
+	
+	if res.StatusCode > 299 {
+		err := fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, data)
+		return result, err
+	}
+
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return result, err
+	}
 
 	return result, nil
 }
