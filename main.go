@@ -118,6 +118,11 @@ func createCommandRegistry() map[string]cliCommand {
 			description: "It displays the names of previous 20 location areas in the Pokemon world. Usage: mapb",
 			callback: commandMapB,
 		},
+		"pokedex": {
+			name: "pokedex",
+			description: "It displays the list of all caught Pokemon. Usage: pokedex",
+			callback: commandPokedex,
+		},
 	}
 
 	registry["help"] = cliCommand {
@@ -266,6 +271,21 @@ func commandInspect(cfg *config, args []string) error {
 	}
 	
 	printPokemonInfo(pokemonInfo)
+
+	return nil
+}
+
+func commandPokedex(cfg *config, args []string) error {
+	fmt.Println("Your Pokedex:")
+	
+	if len(pokedexCache) == 0 {
+		fmt.Println(" - No Pokemon caught yet")
+		return nil
+	}
+
+	for _, pokemonInfo := range pokedexCache {
+		println(" - " + pokemonInfo.Name)
+	}	
 
 	return nil
 }
