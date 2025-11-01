@@ -41,6 +41,17 @@ type PokemonLocationAreaDetailsResponse struct {
 	PokemonEncounters []PokemonEncounter `json:"pokemon_encounters"`
 }
 
+type PokemonType struct {
+	Slot int `json:"slot"`
+	Type NamedResource `json:"type"`
+}
+
+type PokemonStat struct {
+	BaseStat int `json:"base_stat"`
+	Effort int `json:"effort"`
+	Stat NamedResource `json:"Stat"`
+}
+
 type PokemonInfoResponse struct {
 	Id int `json:"id"`
 	Name string `json:"name"`
@@ -49,6 +60,8 @@ type PokemonInfoResponse struct {
 	IsDefault bool `json:"is_default"`
 	Order int `json:"order"`
 	Weight int `json:"weight"`
+	Types []PokemonType `json:"types"`
+	Stats []PokemonStat `json:"stats"`
 }
 
 type cliCommand struct {
@@ -89,6 +102,11 @@ func createCommandRegistry() map[string]cliCommand {
 			name: "explore",
 			description: "Lists all the Pokémon located in a specific location area. Usage: explore <location name>",
 			callback: commandExplore,
+		},
+		"inspect": {
+			name: "inspect",
+			description: "Inspect a caught Pokemon. Usage: inspect <pokemon name>",
+			callback: commandInspect,
 		},
 		"map": {
 			name: "map",
@@ -224,15 +242,62 @@ func commandCatch(cfg *config, args []string) error {
 
 	if isSuccessfulCapture {
 		pokedexCache[pokemonInfo.Name] = pokemonInfo
-		
+
 		msg := fmt.Sprintf("%v was caught!", pokemonInfo.Name)
 		fmt.Println(msg)
+		fmt.Println("You may now inspect it with the inspect command.")
 	} else {
 		msg := fmt.Sprintf("%v escaped!", pokemonInfo.Name)
 		fmt.Println(msg)
 	}
 
 	return nil
+}
+
+func commandInspect(cfg *config, args []string) error {
+	if len(args) == 0 || len(strings.TrimSpace(args[0])) == 0 {
+		return fmt.Errorf("missing pokemon name. Usage: inspect <pokemon name>")
+	}
+
+	pokemonName := args[0]
+	pokemonInfo, ok := pokedexCache[pokemonName]
+	if !ok {
+		return fmt.Errorf("you have not caught that pokemon")
+	}
+	
+	printPokemonInfo(pokemonInfo)
+
+	return nil
+}
+
+func printPokemonInfo(pokemonInfo PokemonInfoResponse) {
+	fmt.Println("Name: " + pokemonInfo.Name)
+
+	heightStr := fmt.Sprintf("Height: %v", pokemonInfo.Height)
+	fmt.Println(heightStr)
+
+	weightStr := fmt.Sprintf("Weight: %v", pokemonInfo.Weight)
+	fmt.Println(weightStr)
+	
+	fmt.Println("Stats:")
+	if len(pokemonInfo.Stats) == 0 {
+		fmt.Println("  - No stats found")
+	} else {
+		for _, stat := range pokemonInfo.Stats {
+			statStr := fmt.Sprintf("  - %v: %v", stat.Stat.Name, stat.BaseStat)
+			fmt.Println(statStr)
+		}
+	}
+
+	fmt.Println("Types:")
+	if len(pokemonInfo.Types) == 0 {
+		fmt.Println("  - No types found")
+	} else {
+	for _, tpe := range pokemonInfo.Types {
+			tpeStr := fmt.Sprintf("  - %v", tpe.Type.Name)
+			fmt.Println(tpeStr)
+		}
+	}
 }
 
 func printPokemonLocations(data PokemonLocationAreaResponse) {
